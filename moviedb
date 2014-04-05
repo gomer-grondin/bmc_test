@@ -1,0 +1,126 @@
+#!/usr/bin/perl
+
+use Movie;
+use MovieCollection;
+
+my $datafile = $ARGV[0] || 'moviedb.json';
+my $collection = MovieCollection->new( { datafile => $datafile } );
+$collection or die "Problem initializing MovieCollection";
+
+my $modified; # global to track if storage is in sync
+
+my $fun = {
+  U => {
+               exec     => sub { 
+                         $modified or return undef;
+                         $collection->update_storage(); 
+                         $modified = 0; 
+               },
+               menutext => 'update collection file',
+       },
+  L => {
+               exec     => sub { print $collection->list_title() . "\n\n"; },
+               menutext => 'list movies by title',
+       },
+  A => {
+               exec     => sub {  my $args = {};
+                             print "\n ADD movie \n\t\t Enter title: ";
+                             $args->{title} = <STDIN>; chomp $args->{title};
+                             print "\t\t Enter year released (YYYY): ";
+                             $args->{year} = <STDIN>; chomp $args->{year};
+                             my $f;
+                             my $re = qr/^(VHS)|(DVD)|(Blu-Ray)$/;
+                             until( $f =~ $re ) {
+                               my $p = "[VHS / DVD / Blu-Ray]";
+                               print "\t\t Enter format $re : ";
+                               $f = <STDIN>; chomp $f;
+                             }
+                             $args->{format} = $f;
+                             $args->{stars} = [];
+                             my $input = 'dummy data';
+                             until( $input eq '' ) {
+                               print "\t\t Enter stars (empty line to end): ";
+                               $input = <STDIN>; chomp $input;
+                               $input and push @{$args->{stars}}, $input;
+                             };
+                             my $m = eval { Movie->new( $args ); };
+                             $@ and warn $@;
+                             if( $m ) {
+                               $collection->add( $m );
+                               $modified = 1;
+                             }
+               },
+               menutext => 'add movie',
+       },
+  D => {
+               exec     => sub {
+                             print "\t\t Enter movie ID: ";
+                             my $i = <STDIN>; chomp( $i );
+                             my $m = $collection->moviebyID( $i );
+                             if( $m ) {
+                               $collection->delete( $m );
+                               print "\n\n";
+                               $modified = 1;
+                             }
+               },
+               menutext => 'delete movie',
+       },
+  M => {
+               exec     => sub {
+                             print "\t\t Enter movie ID: ";
+                             my $i = <STDIN>; chomp( $i );
+                             my $m = $collection->moviebyID( $i );
+                             $m and print $m->display() . "\n\n";
+               },
+               menutext => 'display movie details ',
+       },
+  Y => {
+               exec     => sub { print $collection->list_year() . "\n\n"; },
+               menutext => 'list movies by year',
+       },
+  T => {
+               exec     => sub {
+                             print "\t\t Enter title: ";
+                             my $i = <STDIN>; chomp( $i );
+                             print $collection->search_title( $i ) . "\n\n";
+               },
+               menutext => 'find movie by title',
+       },
+  S => {
+               exec     => sub {
+                             print "\t\t Enter name of star: ";
+                             my $i = <STDIN>; chomp( $i );
+                             print $collection->search_star( $i ) . "\n\n";
+               },
+               menutext => 'find movie by star',
+       },
+  X => {
+               exec     => sub { 
+                              if( $modified ) {
+                                print "Save changes ? (y/N) ";
+                                my $i = <STDIN>; chomp( $i );
+                                $i =~ /^y/i and $collection->update_storage();
+                              }
+                              die "come back anytime\n"; 
+               },
+               menutext => 'exit program ',
+      },
+};
+
+while( 1 ) {
+  print $collection->howmanymovies() . " movies in collection\n";
+  for my $m ( sort keys %$fun ) {
+    $m =~ /X/ and next; # dont put exit option in alphabetical order
+    my $t = $fun->{$m}{menutext};
+    print "$m) $t\n";
+  }
+  my $t = $fun->{X}{menutext};
+  print "X) $t\n";  # exit option belongs at the end of menu
+  my $input = uc substr(<STDIN>,0,1);
+  if( exists $fun->{$input} ) {
+    &{$fun->{$input}{exec}}();
+    print "Press Enter to continue "; 
+    my $i = <STDIN>;
+  }  
+}  
+  

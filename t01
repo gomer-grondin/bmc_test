@@ -1,0 +1,39 @@
+#!/usr/bin/perl
+#
+# t01
+#
+
+use Movie;
+use MovieCollection;
+use Test::More;
+use Data::Dumper qw( Dumper );
+use JSON;
+use strict;
+
+my $c = MovieCollection->new( { datafile => 'moviedb.json' } );
+my ( $m, $hash );
+$m = Movie->new( { title  => 'Casablanca', 
+                   year   => '1933', 
+                   format => 'DVD', 
+                   stars  => [ 'Bogart', 'Bacall' ],
+                 }
+               );
+$m and $c->add( $m );
+print Dumper( $c );
+print $m->display;
+$m = Movie->new( { title  => '2001 : A Space Odyssy', 
+                   year   => '1933', 
+                   format => 'DVD', 
+                   stars  => [],
+                 }
+               );
+$m and $c->add( $m );
+print Dumper( $c );
+print $m->display;
+print $c->list_year() . "\n"; 
+print $c->list_title() . "\n"; 
+print $c->search_star('Bogart') . "\n"; 
+print $c->search_title('space') . "\n"; 
+$c->update_storage();
+$c->delete( $m ); 
+print Dumper( $c );
